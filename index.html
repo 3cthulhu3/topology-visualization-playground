@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Topology Visualization Playground</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1>Topology Visualization Playground</h1>
+      <p class="intro">
+        Explore interactive mathematical surfaces and how geometric parameters affect their shape.
+      </p>
+
+      <div class="control-group">
+        <label for="amplitude">Amplitude</label>
+        <input type="range" id="amplitude" min="0" max="2" step="0.01" value="0.75" />
+        <span id="amplitudeValue">0.75</span>
+      </div>
+
+      <div class="control-group">
+        <label for="frequency">Frequency</label>
+        <input type="range" id="frequency" min="1" max="10" step="1" value="3" />
+        <span id="frequencyValue">3</span>
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="wireframe" />
+          Wireframe
+        </label>
+      </div>
+
+      <div class="control-group">
+        <label>
+          <input type="checkbox" id="autorotate" checked />
+          Auto rotate
+        </label>
+      </div>
+
+      <button id="resetBtn">Reset View</button>
+
+      <section class="notes">
+        <h2>What to observe</h2>
+        <p>
+          Increasing amplitude changes how strongly the surface bends. Increasing frequency adds more oscillations across the domain.
+        </p>
+        <p>
+          This first version is a visual playground for surface geometry intuition, which can later be extended toward curvature comparisons and Bonnet-pair-style demonstrations.
+        </p>
+      </section>
+    </aside>
+
+    <main class="viewer">
+      <div id="scene-container"></div>
+    </main>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
