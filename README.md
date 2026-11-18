@@ -158,3 +158,7 @@ push (`.github/workflows/test.yml`).
 - [ ] Genus-g surfaces and connected sums, to show how χ changes when you add a handle
 - [ ] Geodesics and parallel transport (holonomy ↔ enclosed curvature)
 - [ ] Optional offline mode with vendored three.js
+
+## License
+
+[MIT](LICENSE)
