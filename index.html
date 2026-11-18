@@ -3,61 +3,100 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Interactive playground for surface geometry and topology: curvature colouring, Gauss–Bonnet and orientability." />
   <title>Topology Visualization Playground</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- The three.js version is pinned in exactly one place. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
       <h1>Topology Visualization Playground</h1>
       <p class="intro">
-        Explore interactive mathematical surfaces and how geometric parameters affect their shape.
+        Bend and stretch surfaces, watch their curvature change — and see which numbers
+        <em>never</em> change. Those are the topological ones.
       </p>
 
       <div class="control-group">
-        <label for="amplitude">Amplitude</label>
-        <input type="range" id="amplitude" min="0" max="2" step="0.01" value="0.75" />
-        <span id="amplitudeValue">0.75</span>
+        <label for="surface">Surface</label>
+        <select id="surface"></select>
+        <p id="surfaceDescription" class="hint"></p>
       </div>
 
-      <div class="control-group">
-        <label for="frequency">Frequency</label>
-        <input type="range" id="frequency" min="1" max="10" step="1" value="3" />
-        <span id="frequencyValue">3</span>
-      </div>
+      <fieldset class="control-group" id="paramControls">
+        <legend>Shape parameters</legend>
+      </fieldset>
 
-      <div class="control-group">
-        <label>
-          <input type="checkbox" id="wireframe" />
-          Wireframe
-        </label>
-      </div>
-
-      <div class="control-group">
-        <label>
-          <input type="checkbox" id="autorotate" checked />
-          Auto rotate
-        </label>
-      </div>
-
-      <button id="resetBtn">Reset View</button>
-
-      <section class="notes">
-        <h2>What to observe</h2>
-        <p>
-          Increasing amplitude changes how strongly the surface bends. Increasing frequency adds more oscillations across the domain.
-        </p>
-        <p>
-          This first version is a visual playground for surface geometry intuition, which can later be extended toward curvature comparisons and Bonnet-pair-style demonstrations.
-        </p>
+      <section class="panel panel-tight" aria-labelledby="gbHeading">
+        <h2 id="gbHeading">Gauss–Bonnet check</h2>
+        <p class="gb-value"><span class="mono">∫K dA / 2π =</span> <strong id="gbValue" class="mono">–</strong></p>
+        <p id="gbNote" class="hint" aria-live="polite"></p>
+        <p class="hint">Curvature range: <span id="kRange" class="mono">–</span></p>
       </section>
+      <div class="control-group">
+        <label for="colorMode">Colour by</label>
+        <select id="colorMode">
+          <option value="gaussian">Gaussian curvature K</option>
+          <option value="mean">Mean curvature H</option>
+          <option value="solid">Solid colour</option>
+        </select>
+        <div id="legend" class="legend" aria-hidden="true">
+          <div class="legend-bar"></div>
+          <div class="legend-labels"><span id="legendMin"></span><span>0</span><span id="legendMax"></span></div>
+        </div>
+      </div>
+
+      <div class="control-group toggles">
+        <label><input type="checkbox" id="wireframe" /> Wireframe</label>
+        <label><input type="checkbox" id="autorotate" /> Auto rotate</label>
+      </div>
+
+      <div class="button-row">
+        <button type="button" id="resetViewBtn">Reset view</button>
+        <button type="button" id="resetParamsBtn" class="secondary">Reset parameters</button>
+        <button type="button" id="copyLinkBtn" class="secondary">Copy link</button>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+
+      <section class="panel" aria-labelledby="topologyHeading">
+        <h2 id="topologyHeading">Topology</h2>
+        <dl class="facts">
+          <dt>Euler characteristic χ</dt><dd id="factChi">–</dd>
+          <dt>Orientable</dt><dd id="factOrientable">–</dd>
+          <dt id="factGenusLabel">Genus</dt><dd id="factGenus">–</dd>
+          <dt>Boundary components</dt><dd id="factBoundary">–</dd>
+        </dl>
+        <p id="topologyNote" class="hint"></p>
+      </section>
+
     </aside>
 
     <main class="viewer">
-      <div id="scene-container"></div>
+      <div id="scene-container" aria-label="3D view of the selected surface. Drag to rotate, scroll to zoom."></div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <noscript><div class="error">This playground needs JavaScript and WebGL.</div></noscript>
     </main>
   </div>
 
-  <script type="module" src="script.js"></script>
+  <!-- Classic inline script: module scripts never run on file://, so this is the only way to explain it. -->
+  <script>
+    if (location.protocol === "file:") {
+      var e = document.getElementById("error");
+      e.hidden = false;
+      e.innerHTML =
+        "<strong>Please serve this page over HTTP.</strong>" +
+        "<p>Browsers block ES modules on file:// URLs. Run <code>npm start</code> " +
+        "(or <code>python3 -m http.server 8000</code>) in the project folder and open http://localhost:8000.</p>";
+    }
+  </script>
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>
