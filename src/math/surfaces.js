@@ -1,0 +1,200 @@
+/**
+ * Surface registry.
+ *
+ * Every surface is a pure description with no rendering dependencies, so it can be
+ * unit-tested in Node and reused by any renderer.
+ *
+ * Coordinate convention: surfaces return mathematical coordinates [x, y, z] with z up.
+ * The renderer is responsible for mapping these into its own frame.
+ *
+ * @typedef {Object} ParamSpec
+ * @property {string} id        Key used in the params object and in the URL.
+ * @property {string} label     Human-readable label.
+ * @property {number} min
+ * @property {number} max
+ * @property {number} step
+ * @property {number} default   Must lie within [min, max].
+ *
+ * @typedef {Object} Topology
+ * @property {boolean} closed            Compact without boundary.
+ * @property {boolean} orientable
+ * @property {number|null} eulerChar     Euler characteristic χ (null if not meaningful, e.g. unbounded graphs).
+ * @property {number|null} genus         Orientable genus, or non-orientable genus (crosscap number).
+ * @property {number} boundaryComponents
+ * @property {string} note               Short explanation shown in the UI.
+ *
+ * @typedef {Object} Surface
+ * @property {string} id
+ * @property {string} name
+ * @property {string} description
+ * @property {'graph'|'parametric'} kind
+ * @property {ParamSpec[]} params
+ * @property {[number, number]} uRange
+ * @property {[number, number]} vRange
+ * @property {(u: number, v: number, p: Record<string, number>) => [number, number, number]} evaluate
+ * @property {Topology} topology
+ */
+
+const TAU = Math.PI * 2;
+
+/** @type {Surface[]} */
+export const SURFACES = [
+  {
+    id: "wave",
+    name: "Wave graph",
+    description:
+      "z = a·sin(f·x)·cos(f·y). Amplitude and frequency change the geometry (bending, curvature) but never the topology: it is always a disc.",
+    kind: "graph",
+    params: [
+      { id: "amplitude", label: "Amplitude a", min: 0, max: 2, step: 0.01, default: 0.75 },
+      { id: "frequency", label: "Frequency f", min: 1, max: 10, step: 1, default: 3 }
+    ],
+    uRange: [-2, 2],
+    vRange: [-2, 2],
+    evaluate: (x, y, p) => [x, y, p.amplitude * Math.sin(p.frequency * x) * Math.cos(p.frequency * y)],
+    topology: {
+      closed: false,
+      orientable: true,
+      eulerChar: 1,
+      genus: 0,
+      boundaryComponents: 1,
+      note: "A square patch is a topological disc (χ = 1), whatever its height function."
+    }
+  },
+  {
+    id: "saddle",
+    name: "Saddle (hyperbolic paraboloid)",
+    description: "z = a·(x² − y²). Gaussian curvature is negative everywhere: the surface bends up in one direction and down in the other.",
+    kind: "graph",
+    params: [{ id: "a", label: "Steepness a", min: 0, max: 1.5, step: 0.01, default: 0.4 }],
+    uRange: [-2, 2],
+    vRange: [-2, 2],
+    evaluate: (x, y, p) => [x, y, p.a * (x * x - y * y)],
+    topology: {
+      closed: false,
+      orientable: true,
+      eulerChar: 1,
+      genus: 0,
+      boundaryComponents: 1,
+      note: "Still a disc (χ = 1). Compare its K < 0 with the sphere's K > 0."
+    }
+  },
+  {
+    id: "sphere",
+    name: "Sphere",
+    description: "Constant positive curvature K = 1/R². Changing R rescales K but ∫K dA stays 4π.",
+    kind: "parametric",
+    params: [{ id: "R", label: "Radius R", min: 0.5, max: 2.5, step: 0.01, default: 1.5 }],
+    uRange: [0, TAU],
+    vRange: [0, Math.PI],
+    evaluate: (u, v, p) => [
+      p.R * Math.sin(v) * Math.cos(u),
+      p.R * Math.sin(v) * Math.sin(u),
+      p.R * Math.cos(v)
+    ],
+    topology: {
+      closed: true,
+      orientable: true,
+      eulerChar: 2,
+      genus: 0,
+      boundaryComponents: 0,
+      note: "Genus 0, χ = 2. Gauss–Bonnet: ∫K dA = 2πχ = 4π for any radius."
+    }
+  },
+  {
+    id: "torus",
+    name: "Torus",
+    description:
+      "Outer half has K > 0, inner half K < 0. Changing R and r reshapes the curvature, but the positive and negative parts always cancel.",
+    kind: "parametric",
+    params: [
+      { id: "R", label: "Major radius R", min: 0.8, max: 2.5, step: 0.01, default: 1.6 },
+      { id: "r", label: "Minor radius r", min: 0.1, max: 0.79, step: 0.01, default: 0.6 }
+    ],
+    uRange: [0, TAU],
+    vRange: [0, TAU],
+    evaluate: (u, v, p) => {
+      const w = p.R + p.r * Math.cos(v);
+      return [w * Math.cos(u), w * Math.sin(u), p.r * Math.sin(v)];
+    },
+    topology: {
+      closed: true,
+      orientable: true,
+      eulerChar: 0,
+      genus: 1,
+      boundaryComponents: 0,
+      note: "Genus 1, χ = 0. Gauss–Bonnet: ∫K dA = 0 — the red and blue regions balance exactly."
+    }
+  },
+  {
+    id: "mobius",
+    name: "Möbius strip",
+    description: "One side, one edge. Watch the shading flip across the seam: no consistent normal exists.",
+    kind: "parametric",
+    params: [
+      { id: "radius", label: "Radius", min: 0.8, max: 2.5, step: 0.01, default: 1.6 },
+      { id: "width", label: "Half-width", min: 0.1, max: 0.79, step: 0.01, default: 0.6 }
+    ],
+    uRange: [0, TAU],
+    vRange: [-1, 1],
+    evaluate: (u, v, p) => {
+      const s = v * p.width;
+      const w = p.radius + s * Math.cos(u / 2);
+      return [w * Math.cos(u), w * Math.sin(u), s * Math.sin(u / 2)];
+    },
+    topology: {
+      closed: false,
+      orientable: false,
+      eulerChar: 0,
+      genus: 1,
+      boundaryComponents: 1,
+      note: "Non-orientable, χ = 0, a single boundary circle. Gauss–Bonnet needs a boundary term here, so ∫K dA alone is not 2πχ."
+    }
+  },
+  {
+    id: "klein",
+    name: "Klein bottle (figure-8 immersion)",
+    description:
+      "A closed non-orientable surface. In 3D it must pass through itself; this figure-8 version is an immersion, so self-intersections are expected.",
+    kind: "parametric",
+    params: [{ id: "r", label: "Tube radius r", min: 1, max: 3, step: 0.01, default: 2 }],
+    uRange: [0, TAU],
+    vRange: [0, TAU],
+    evaluate: (u, v, p) => {
+      const s = 0.5; // scale so the default fits next to the other surfaces
+      const c = Math.cos(u / 2);
+      const d = Math.sin(u / 2);
+      const w = p.r + c * Math.sin(v) - d * Math.sin(2 * v);
+      return [s * w * Math.cos(u), s * w * Math.sin(u), s * (d * Math.sin(v) + c * Math.sin(2 * v))];
+    },
+    topology: {
+      closed: true,
+      orientable: false,
+      eulerChar: 0,
+      genus: 2,
+      boundaryComponents: 0,
+      note: "Non-orientable genus 2 (two crosscaps), χ = 0. Gauss–Bonnet still holds: ∫K dA = 0."
+    }
+  }
+];
+
+/** Default surface id — matches the original single-surface demo. */
+export const DEFAULT_SURFACE_ID = "wave";
+
+const BY_ID = new Map(SURFACES.map((s) => [s.id, s]));
+
+/**
+ * @param {string} id
+ * @returns {Surface | undefined}
+ */
+export function getSurface(id) {
+  return BY_ID.get(id);
+}
+
+/**
+ * @param {Surface} surface
+ * @returns {Record<string, number>} params object filled with defaults
+ */
+export function defaultParams(surface) {
+  return Object.fromEntries(surface.params.map((p) => [p.id, p.default]));
+}
