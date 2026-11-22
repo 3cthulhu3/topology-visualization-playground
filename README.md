@@ -24,9 +24,9 @@ surface.
 
 | | |
 |---|---|
-| **Surfaces** | Wave graph (the original demo), saddle, sphere, torus, Möbius strip, Klein bottle (figure-8 immersion), catenoid ↔ helicoid Bonnet family |
+| **Surfaces** | Wave graph (the original demo), saddle, sphere, torus, Möbius strip, Klein bottle (figure-8 immersion), catenoid ↔ helicoid Bonnet family, genus-g surfaces (0–4 handles) |
 | **Curvature colouring** | Gaussian curvature *K* or mean curvature *H* on a diverging blue–white–red scale, with a legend |
-| **Topology panel** | Euler characteristic χ, orientability, genus (or crosscap number), boundary components |
+| **Topology panel** | Euler characteristic χ, orientability, genus (or crosscap number), boundary components — and χ = V − E + F **counted on the rendered mesh**, as an independent check |
 | **Gauss–Bonnet check** | Live ∫K dA / 2π, compared against χ for closed surfaces |
 | **Local invariants** | Metric (E, F, G), K, H and second fundamental form (L, M, N) at a probe point, grouped into intrinsic and extrinsic |
 | **Shareable links** | Surface, parameters, colour mode and wireframe live in the URL hash |
@@ -72,6 +72,9 @@ Example link: `http://localhost:8000/#surface=torus&R=2.4&r=0.2&color=gaussian`
    In the local-invariants panel, E, F, G, K and H do not move, but L, M and N rotate
    from (−1, 0, 1) to (0, 1, 0). That means the metric and the mean curvature alone do
    not determine the surface.
+7. **Adding handles.** Choose *Genus-g surface* and step *g* from 0 to 4. The mesh
+   count V − E + F drops by 2 each time (2, 0, −2, −4, −6), and ∫K dA / 2π follows it.
+   The extra negative curvature sits in the blue necks where the handles join.
 
 ## Project structure
 
@@ -85,7 +88,9 @@ src/
   math/
     surfaces.js         Surface registry: parametrisations, parameters, topology [pure]
     curvature.js        Finite-difference K, H, normals; Gauss–Bonnet integral   [pure]
-    mesh.js             Surface → typed-array mesh buffers                       [pure]
+    mesh.js             Surface → typed-array mesh buffers; total curvature      [pure]
+    implicit.js         Marching tetrahedra, curvature of level sets F = 0       [pure]
+    topology.js         χ = V − E + F on a mesh, with seam/pole welding          [pure]
     colormap.js         Diverging colour map with robust limits                  [pure]
   render/
     viewer.js           Thin three.js wrapper (in-place buffer updates, resize, framing)
@@ -125,6 +130,10 @@ Add an entry to `SURFACES` in `src/math/surfaces.js`:
 }
 ```
 
+Surfaces that are easier to describe as the boundary of a solid can use
+`kind: "implicit"` instead. Provide `field(x, y, z, p)` (negative inside),
+`bounds(p)` and `featureSize(p)`; see the genus-g entry for an example.
+
 You do not need to write any curvature formulas, because they are computed
 numerically. The UI controls are generated from `params`, and the tests check every
 registry entry automatically: parameter ranges, finite values over the domain, and
@@ -139,7 +148,9 @@ npm test
 The unit tests check the numerical curvature against closed-form results: the sphere
 (K = 1/R², |H| = 1/R), the torus (K = cos v / (r(R + r cos v))) and graph surfaces. They
 check Gauss–Bonnet (∫K dA / 2π = χ within 0.01) for the sphere, torus and Klein bottle
-at several parameter values. They also check mesh buffer integrity, colour mapping,
+at several parameter values. Every surface's mesh is counted (V − E + F) and compared
+with its topology metadata at default and extreme parameters; genus-g surfaces are
+checked for g = 0…4, including convergence of ∫K dA under grid refinement. They also check mesh buffer integrity, colour mapping,
 and URL round-tripping, including malformed links. CI runs the same tests on every
 push (`.github/workflows/test.yml`).
 
@@ -148,7 +159,11 @@ push (`.github/workflows/test.yml`).
 - Curvature uses central finite differences, which are accurate to about 1e-4. The
   colour scale clips at the 98th percentile of |value|, so a few extreme points cannot
   wash out the rest of the surface.
-- The Klein bottle is an immersion, so its self-intersections are expected.
+- The Klein bottle is an immersion, so its self-intersections are expected. The mesh χ
+  count tells sheets apart by their tangent planes, so it does not merge them.
+- For implicit (genus-g) surfaces, ∫K dA is integrated over the triangle mesh. The error
+  is about 1 % of |χ| at the default grid and shrinks as the grid is refined; the panel
+  allows for it. The V − E + F count itself is exact.
 - Mean curvature depends on the sign of the normal. On non-orientable surfaces, a jump
   in the H colouring is real, not a bug.
 - three.js comes from `cdn.jsdelivr.net`, so the page needs network access the first
@@ -160,7 +175,7 @@ push (`.github/workflows/test.yml`).
 - [x] Topological invariants and a live Gauss–Bonnet check
 - [x] Bonnet problem: the catenoid ↔ helicoid family, where the metric and mean
       curvature stay fixed but the shape changes (see the note below)
-- [ ] Genus-g surfaces and connected sums, to show how χ changes when you add a handle
+- [x] Genus-g surfaces and connected sums: χ counted on the mesh drops by 2 per handle
 - [ ] Geodesics and parallel transport (holonomy ↔ enclosed curvature)
 - [ ] Optional offline mode with vendored three.js
 

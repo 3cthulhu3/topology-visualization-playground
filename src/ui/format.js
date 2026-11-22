@@ -17,10 +17,13 @@ export function formatNumber(x, digits = 3) {
  *
  * @param {import('../math/surfaces.js').Topology} topology
  * @param {number} totalK  ∫K dA
+ * @param {{ meshEstimate?: boolean }} [options]  meshEstimate: ∫K dA came from a triangle
+ *   mesh (implicit surfaces) rather than the exact parametrisation, so it carries a small
+ *   discretisation error that shrinks as the grid is refined.
  * @returns {{ value: string, note: string, matches: boolean | null }}
  *   matches is null when the theorem (without boundary term) does not apply.
  */
-export function gaussBonnetSummary(topology, totalK) {
+export function gaussBonnetSummary(topology, totalK, options = {}) {
   const ratio = totalK / (2 * Math.PI);
   const value = formatNumber(ratio, 3);
 
@@ -29,13 +32,18 @@ export function gaussBonnetSummary(topology, totalK) {
   }
 
   if (topology.closed && topology.eulerChar !== null) {
-    const matches = Math.abs(ratio - topology.eulerChar) < 0.02;
+    const chi = topology.eulerChar;
+    const tolerance = gaussBonnetTolerance(chi, options.meshEstimate);
+    const matches = Math.abs(ratio - chi) < tolerance;
+    const verdict = options.meshEstimate
+      ? `Matches χ = ${chi} up to discretisation error (a mesh estimate that converges to χ as the grid is refined)`
+      : `Equals χ = ${chi}`;
     return {
       value,
       matches,
       note: matches
-        ? `Equals χ = ${topology.eulerChar}. Change the parameters: the curvature moves around, but this number stays put.`
-        : `Expected χ = ${topology.eulerChar}; the numerical error is larger than usual for these parameters.`
+        ? `${verdict}. Change the parameters: the curvature moves around, but this number stays put.`
+        : `Expected χ = ${chi}; the numerical error is larger than usual for these parameters.`
     };
   }
 
@@ -45,6 +53,15 @@ export function gaussBonnetSummary(topology, totalK) {
     note:
       "This surface has a boundary, so Gauss–Bonnet adds a boundary term ∮k_g ds. On its own this number is geometric, not topological: stretching changes it (try the wave graph), bending without stretching does not (try the Bonnet family)."
   };
+}
+
+/**
+ * How close ∫K dA / 2π must be to χ to count as a match. Exact parametrisations are
+ * integrated to ~1e-4; implicit surfaces are integrated over a marching-tetrahedra mesh
+ * whose error grows with the amount of curvature (≈ 1 % of |χ| at the default grid).
+ */
+export function gaussBonnetTolerance(chi, meshEstimate = false) {
+  return meshEstimate ? 0.02 + 0.02 * Math.abs(chi) : 0.02;
 }
 
 /** Text for the topology facts list. */
@@ -82,4 +99,17 @@ export function invariantRows(d) {
     value: formatNumber(value, 4),
     groupStart: i === 0 || rows[i - 1][0] !== group
   }));
+}
+
+/**
+ * Text for the "mesh count" row: χ counted from the triangle mesh itself.
+ * @param {{ V: number, E: number, F: number, chi: number }} counts
+ * @param {number | null} expected  χ from the surface's topology metadata
+ */
+export function meshCountSummary(counts, expected) {
+  return {
+    value: String(counts.chi),
+    detail: `V − E + F = ${counts.V} − ${counts.E} + ${counts.F}`,
+    matches: expected === null ? null : counts.chi === expected
+  };
 }

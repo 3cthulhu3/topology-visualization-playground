@@ -23,6 +23,25 @@ for (const s of SURFACES) {
     }
   });
 
+  if (s.kind === "implicit") {
+    test(`${s.id}: field is negative somewhere inside and positive on the bounding box`, () => {
+      for (const params of extremes(s)) {
+        const b = s.bounds(params);
+        const corners = [0, 1, 2, 3, 4, 5, 6, 7].map((c) => [
+          c & 1 ? b.max[0] : b.min[0],
+          c & 2 ? b.max[1] : b.min[1],
+          c & 4 ? b.max[2] : b.min[2]
+        ]);
+        for (const [x, y, z] of corners) assert.ok(s.field(x, y, z, params) > 0, "outside at corners");
+        assert.ok(s.featureSize(params) > 0);
+      }
+    });
+    test(`${s.id}: topology metadata is consistent (defaults and extremes)`, () => {
+      for (const params of extremes(s)) checkTopology(topologyOf(s, params));
+    });
+    continue;
+  }
+
   test(`${s.id}: evaluate is finite across the domain at defaults and extremes`, () => {
     const variants = [
       defaultParams(s),
@@ -69,8 +88,16 @@ function checkTopology(t) {
   }
 }
 
-test("closed surfaces close up: X(u0, v) = X(u1, v) along the u seam", () => {
-  for (const s of SURFACES.filter((x) => x.topology.closed)) {
+function extremes(s) {
+  return [
+    defaultParams(s),
+    Object.fromEntries(s.params.map((p) => [p.id, p.min])),
+    Object.fromEntries(s.params.map((p) => [p.id, p.max]))
+  ];
+}
+
+test("closed parametric surfaces close up: X(u0, v) = X(u1, v) along the u seam", () => {
+  for (const s of SURFACES.filter((x) => x.kind === "parametric" && topologyOf(x, defaultParams(x)).closed)) {
     const params = defaultParams(s);
     for (const v of [0.3, 1.1, 2.5]) {
       const a = s.evaluate(s.uRange[0], v, params);

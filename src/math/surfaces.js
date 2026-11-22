@@ -27,11 +27,17 @@
  * @property {string} id
  * @property {string} name
  * @property {string} description
- * @property {'graph'|'parametric'} kind
+ * @property {'graph'|'parametric'|'implicit'} kind
+ *   graph/parametric surfaces define uRange, vRange and evaluate(u, v, p).
+ *   implicit surfaces define field(x, y, z, p) (negative inside), bounds(p) and
+ *   featureSize(p) (thinnest detail, used to pick the grid spacing) instead.
  * @property {ParamSpec[]} params
- * @property {[number, number]} uRange
- * @property {[number, number]} vRange
- * @property {(u: number, v: number, p: Record<string, number>) => [number, number, number]} evaluate
+ * @property {[number, number]} [uRange]
+ * @property {[number, number]} [vRange]
+ * @property {(u: number, v: number, p: Record<string, number>) => [number, number, number]} [evaluate]
+ * @property {(x: number, y: number, z: number, p: Record<string, number>) => number} [field]
+ * @property {(p: Record<string, number>) => { min: [number, number, number], max: [number, number, number] }} [bounds]
+ * @property {(p: Record<string, number>) => number} [featureSize]
  * @property {Topology | ((p: Record<string, number>) => Topology)} topology
  *   Static, or a function of the parameters when a slider can change the topology.
  * @property {[number, number]} [probe]  (u, v) where the "local invariants" panel samples
@@ -221,8 +227,61 @@ export const SURFACES = [
             boundaryComponents: 1,
             note: "For t > 0 the seam opens and the strip becomes a piece of a helicoid: a disc (χ = 1). The bending is a local isometry, so the global gluing is lost."
           }
+  },
+  {
+    id: "genus",
+    name: "Genus-g surface (add handles)",
+    description:
+      "A closed surface built as a smooth union of g overlapping tori — the connected sum of g tori. Each handle you add lowers χ by 2. Total curvature follows: ∫K dA = 2π(2 − 2g).",
+    kind: "implicit",
+    params: [
+      { id: "handles", label: "Handles g", min: 0, max: 4, step: 1, default: 2 },
+      { id: "r", label: "Tube radius r", min: 0.2, max: 0.45, step: 0.01, default: 0.32 }
+    ],
+    field: genusField,
+    bounds: (p) => {
+      const g = p.handles;
+      const half = g === 0 ? SPHERE_RADIUS + 0.3 : ((g - 1) * TORUS_SPACING) / 2 + 1 + p.r + 0.3;
+      const side = g === 0 ? SPHERE_RADIUS + 0.3 : 1 + p.r + 0.3;
+      const up = g === 0 ? SPHERE_RADIUS + 0.3 : p.r + 0.3;
+      return { min: [-half, -side, -up], max: [half, side, up] };
+    },
+    featureSize: (p) => (p.handles === 0 ? SPHERE_RADIUS : 2 * p.r),
+    topology: (p) => ({
+      closed: true,
+      orientable: true,
+      eulerChar: 2 - 2 * p.handles,
+      genus: p.handles,
+      boundaryComponents: 0,
+      note:
+        p.handles === 0
+          ? "No handles: a sphere, χ = 2. Add one and you get a torus (χ = 0)."
+          : `Connected sum of ${p.handles} ${p.handles === 1 ? "torus" : "tori"}: χ(A # B) = χ(A) + χ(B) − 2, so each handle subtracts 2 → χ = ${2 - 2 * p.handles}.`
+    })
   }
 ];
+
+const SPHERE_RADIUS = 1.15;
+const TORUS_SPACING = 1.8;
+const BLEND = 0.12;
+
+/**
+ * Smooth union (log-sum-exp) of g tori in a row, each with major radius 1 and tube
+ * radius r. Neighbours overlap enough to merge but leave every hole open, so the
+ * result is a single closed surface of genus g. g = 0 gives a sphere.
+ */
+function genusField(x, y, z, p) {
+  const g = p.handles;
+  if (g === 0) return Math.hypot(x, y, z) - SPHERE_RADIUS;
+  let sum = 0;
+  for (let i = 0; i < g; i++) {
+    const cx = (i - (g - 1) / 2) * TORUS_SPACING;
+    const q = Math.hypot(x - cx, y) - 1;
+    const d = Math.hypot(q, z) - p.r;
+    sum += Math.exp(-d / BLEND);
+  }
+  return -BLEND * Math.log(sum);
+}
 
 /** Default surface id — matches the original single-surface demo. */
 export const DEFAULT_SURFACE_ID = "wave";

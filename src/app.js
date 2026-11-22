@@ -3,19 +3,26 @@
  *
  *   user input → state (validated) → URL hash
  *                                  → buildMesh()        → viewer.setMesh / setColors
- *                                  → integrateCurvature → Gauss–Bonnet panel
+ *                                  → totalCurvature()   → Gauss–Bonnet panel
+ *                                  → meshEulerCharacteristic() → topology panel
  */
 
 import { SURFACES, getSurface, probePoint, topologyOf } from "./math/surfaces.js";
-import { buildMesh } from "./math/mesh.js";
-import { integrateCurvature, localInvariants } from "./math/curvature.js";
+import { buildMesh, totalCurvature } from "./math/mesh.js";
+import { localInvariants } from "./math/curvature.js";
+import { meshEulerCharacteristic } from "./math/topology.js";
 import { colorize, robustLimit } from "./math/colormap.js";
 import { defaultState, hashToState, normalizeState, stateToHash } from "./state.js";
 import { createViewer } from "./render/viewer.js";
-import { formatNumber, gaussBonnetSummary, invariantRows, stepDecimals, topologyFacts } from "./ui/format.js";
+import {
+  formatNumber,
+  gaussBonnetSummary,
+  invariantRows,
+  meshCountSummary,
+  stepDecimals,
+  topologyFacts
+} from "./ui/format.js";
 
-/** Resolution of the Gauss–Bonnet integral (cells per direction). */
-const INTEGRATION_CELLS = 120;
 /** Wait this long after the last slider movement before re-integrating. */
 const INTEGRATION_DEBOUNCE_MS = 120;
 
@@ -47,6 +54,8 @@ export function init(doc = document) {
     factGenus: $("factGenus"),
     factBoundary: $("factBoundary"),
     topologyNote: $("topologyNote"),
+    factMeshChi: $("factMeshChi"),
+    meshCounts: $("meshCounts"),
     probePanel: $("probePanel"),
     probeWhere: $("probeWhere"),
     probeRows: $("probeRows"),
@@ -136,10 +145,21 @@ export function init(doc = document) {
     els.factGenus.textContent = facts.genus;
     els.factBoundary.textContent = facts.boundary;
     els.topologyNote.textContent = topology.note;
+
+    // χ counted from the mesh: welded for parametric surfaces (seams, poles), as-is for
+    // implicit ones (marching tetrahedra already shares vertices).
+    const counts = meshEulerCharacteristic(mesh, { weld: surface.kind !== "implicit" });
+    const summary = meshCountSummary(counts, topology.eulerChar);
+    els.factMeshChi.textContent = `χ = ${summary.value}`;
+    els.factMeshChi.dataset.matches = String(summary.matches);
+    els.meshCounts.textContent = summary.detail;
   }
 
   function renderProbe() {
     const surface = getSurface(state.surfaceId);
+    // Implicit surfaces have no (u, v) parameters, hence no fundamental forms to show.
+    els.probePanel.hidden = surface.kind === "implicit";
+    if (surface.kind === "implicit") return;
     const uv = probePoint(surface);
     const d = localInvariants(surface, state.params, uv);
     els.probeWhere.textContent = `(u, v) = (${formatNumber(uv[0], 2)}, ${formatNumber(uv[1], 2)})`;
@@ -215,8 +235,10 @@ export function init(doc = document) {
     els.gbValue.textContent = "…";
     integrationTimer = setTimeout(() => {
       const surface = getSurface(state.surfaceId);
-      const { totalK } = integrateCurvature(surface, state.params, INTEGRATION_CELLS);
-      const summary = gaussBonnetSummary(topologyOf(surface, state.params), totalK);
+      const { totalK } = totalCurvature(surface, state.params, mesh);
+      const summary = gaussBonnetSummary(topologyOf(surface, state.params), totalK, {
+        meshEstimate: surface.kind === "implicit"
+      });
       els.gbValue.textContent = summary.value;
       els.gbValue.dataset.matches = String(summary.matches);
       els.gbNote.textContent = summary.note;
