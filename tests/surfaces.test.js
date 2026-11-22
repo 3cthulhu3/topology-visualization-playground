@@ -1,8 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SURFACES, DEFAULT_SURFACE_ID, getSurface, defaultParams, topologyOf, probePoint } from "../src/math/surfaces.js";
-
-const RESERVED_URL_KEYS = ["surface", "color", "wireframe"];
+import { RESERVED_URL_KEYS } from "../src/state.js";
 
 test("registry ids are unique and the default exists", () => {
   const ids = SURFACES.map((s) => s.id);

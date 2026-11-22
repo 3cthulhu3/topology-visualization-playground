@@ -36,3 +36,16 @@ test("out-of-range values are clamped and rounded to the step", () => {
   assert.equal(clampParam({ min: 0, max: 2, step: 0.01, default: 1 }, 0.123456), 0.12);
   assert.equal(clampParam({ min: 1, max: 10, step: 1, default: 3 }, 4.6), 5);
 });
+
+test("tool state: defaults, round-trip, validation", () => {
+  assert.equal(defaultState().tool, "none");
+  const fan = normalizeState({ surfaceId: "sphere", tool: "fan", toolParams: { g_u: 0.4, g_dir: 90 } });
+  assert.deepEqual(hashToState(stateToHash(fan)), fan);
+  assert.match(stateToHash(fan), /tool=fan/);
+  assert.doesNotMatch(stateToHash(fan), /loop_v/, "only the active tool's parameters go into the URL");
+  assert.doesNotMatch(stateToHash(defaultState()), /tool=/, "no tool, no clutter");
+  const bad = hashToState("#surface=torus&tool=laser&g_len=999&loop_v=-3");
+  assert.equal(bad.tool, "none");
+  assert.equal(bad.toolParams.g_len, 15);
+  assert.equal(bad.toolParams.loop_v, 0.02);
+});

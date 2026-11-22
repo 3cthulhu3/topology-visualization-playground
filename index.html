@@ -54,6 +54,17 @@
         </div>
       </div>
 
+      <fieldset class="control-group" id="toolControls">
+        <legend>Geodesics &amp; parallel transport</legend>
+        <select id="tool" aria-label="Overlay tool">
+          <option value="none">Off</option>
+          <option value="fan">Geodesic fan</option>
+          <option value="transport">Parallel transport around a loop</option>
+        </select>
+        <div id="toolParams"></div>
+        <p id="toolReadout" class="hint" aria-live="polite"></p>
+      </fieldset>
+
       <div class="control-group toggles">
         <label><input type="checkbox" id="wireframe" /> Wireframe</label>
         <label><input type="checkbox" id="autorotate" /> Auto rotate</label>

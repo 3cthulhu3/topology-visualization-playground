@@ -40,6 +40,10 @@
  * @property {(p: Record<string, number>) => number} [featureSize]
  * @property {Topology | ((p: Record<string, number>) => Topology)} topology
  *   Static, or a function of the parameters when a slider can change the topology.
+ * @property {{ u?: 'periodic' | 'flip', v?: 'periodic' }} [seams]
+ *   How the parameter domain is glued, used by geodesics and parallel transport to
+ *   continue across an edge: 'periodic' wraps around; 'flip' (on u) also reflects v,
+ *   as on a Möbius strip or Klein bottle. Edges without an entry are real boundaries.
  * @property {[number, number]} [probe]  (u, v) where the "local invariants" panel samples
  *   the surface. Defaults to the centre of the domain.
  */
@@ -94,6 +98,7 @@ export const SURFACES = [
     description: "Constant positive curvature K = 1/R². Changing R rescales K but ∫K dA stays 4π.",
     kind: "parametric",
     params: [{ id: "R", label: "Radius R", min: 0.5, max: 2.5, step: 0.01, default: 1.5 }],
+    seams: { u: "periodic" },
     uRange: [0, TAU],
     vRange: [0, Math.PI],
     evaluate: (u, v, p) => [
@@ -120,6 +125,7 @@ export const SURFACES = [
       { id: "R", label: "Major radius R", min: 0.8, max: 2.5, step: 0.01, default: 1.6 },
       { id: "r", label: "Minor radius r", min: 0.1, max: 0.79, step: 0.01, default: 0.6 }
     ],
+    seams: { u: "periodic", v: "periodic" },
     uRange: [0, TAU],
     vRange: [0, TAU],
     evaluate: (u, v, p) => {
@@ -144,6 +150,7 @@ export const SURFACES = [
       { id: "radius", label: "Radius", min: 0.8, max: 2.5, step: 0.01, default: 1.6 },
       { id: "width", label: "Half-width", min: 0.1, max: 0.79, step: 0.01, default: 0.6 }
     ],
+    seams: { u: "flip" },
     uRange: [0, TAU],
     vRange: [-1, 1],
     evaluate: (u, v, p) => {
@@ -167,6 +174,7 @@ export const SURFACES = [
       "A closed non-orientable surface. In 3D it must pass through itself; this figure-8 version is an immersion, so self-intersections are expected.",
     kind: "parametric",
     params: [{ id: "r", label: "Tube radius r", min: 1, max: 3, step: 0.01, default: 2 }],
+    seams: { u: "flip", v: "periodic" },
     uRange: [0, TAU],
     vRange: [0, TAU],
     evaluate: (u, v, p) => {

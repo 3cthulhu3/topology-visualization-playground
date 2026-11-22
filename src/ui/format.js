@@ -113,3 +113,47 @@ export function meshCountSummary(counts, expected) {
     matches: expected === null ? null : counts.chi === expected
   };
 }
+
+const deg = (rad) => `${formatNumber((rad * 180) / Math.PI, 1)}°`;
+/** Angle reduced to [0°, 360°). */
+const deg360 = (rad) => {
+  const d = (((rad * 180) / Math.PI) % 360 + 360) % 360;
+  return `${formatNumber(d >= 359.95 ? 0 : d, 1)}°`;
+};
+
+/**
+ * Readout for the geodesic fan.
+ * @param {{ K: number, count: number, stopped: { boundary: number, singular: number } }} info
+ */
+export function fanReadout({ K, count, stopped }) {
+  const trend = !Number.isFinite(K)
+    ? ""
+    : K > 1e-6
+      ? "K > 0 here, so neighbouring geodesics bend towards each other (they refocus, as on a sphere)."
+      : K < -1e-6
+        ? "K < 0 here, so neighbouring geodesics spread apart faster than straight lines would."
+        : "K ≈ 0 here, so nearby geodesics stay roughly parallel, as on a plane.";
+  const parts = [`K at the start point: ${formatNumber(K, 3)}. ${trend}`];
+  if (stopped.boundary) parts.push(`${stopped.boundary} of ${count} reached the edge of the surface.`);
+  if (stopped.singular) parts.push(`${stopped.singular} of ${count} stopped at a coordinate singularity (a pole).`);
+  return parts.join(" ");
+}
+
+/**
+ * Readout for parallel transport.
+ * @param {ReturnType<typeof import('../math/geodesics.js').holonomyComparison>} c
+ */
+export function transportReadout(c) {
+  if (!c.available) {
+    return { text: "Parallel transport around a loop needs a surface whose u-direction closes up, such as the sphere or the torus.", matches: null };
+  }
+  const matches = c.error < 0.01;
+  return {
+    text:
+      `After one lap the vector has turned by ${deg(c.holonomy)} (cyan → magenta). ` +
+      `Relative to the reference loop (${deg(c.reference)}) that is ${deg360(c.difference)}. ` +
+      `Curvature between the two loops: ∫K dA = ${deg(c.enclosed)} ≡ ${deg360(c.enclosed)} (mod 360°)` +
+      (matches ? " — the same angle, as Gauss–Bonnet predicts." : " — these should agree; the numerical error is larger than usual."),
+    matches
+  };
+}

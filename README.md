@@ -29,7 +29,9 @@ surface.
 | **Topology panel** | Euler characteristic χ, orientability, genus (or crosscap number), boundary components — and χ = V − E + F **counted on the rendered mesh**, as an independent check |
 | **Gauss–Bonnet check** | Live ∫K dA / 2π, compared against χ for closed surfaces |
 | **Local invariants** | Metric (E, F, G), K, H and second fundamental form (L, M, N) at a probe point, grouped into intrinsic and extrinsic |
-| **Shareable links** | Surface, parameters, colour mode and wireframe live in the URL hash |
+| **Geodesics** | A fan of geodesics from any start point, traced intrinsically with Christoffel symbols; continues across glued seams (torus, Möbius, Klein) |
+| **Parallel transport** | A vector carried around a loop, with its holonomy compared live against the enclosed curvature |
+| **Shareable links** | Surface, parameters, colour mode, wireframe and the active tool live in the URL hash |
 | **Robustness** | Clear messages for missing WebGL, blocked CDN or opening from `file://`; invalid links fall back to defaults |
 | **Accessibility** | Labelled controls, live values in `<output>`, focus styles, auto-rotate off under `prefers-reduced-motion` |
 
@@ -75,6 +77,14 @@ Example link: `http://localhost:8000/#surface=torus&R=2.4&r=0.2&color=gaussian`
 7. **Adding handles.** Choose *Genus-g surface* and step *g* from 0 to 4. The mesh
    count V − E + F drops by 2 each time (2, 0, −2, −4, −6), and ∫K dA / 2π follows it.
    The extra negative curvature sits in the blue necks where the handles join.
+8. **Curvature bends straight lines.** Under *Geodesics & parallel transport*, choose
+   *Geodesic fan*. On the sphere, seven geodesics leave one point and meet again at the
+   antipode (K > 0 focuses them). On the saddle they fan out (K < 0). On the flat wave
+   graph (amplitude 0) they stay straight.
+9. **Holonomy measures curvature.** Choose *Parallel transport around a loop* on the
+   sphere or the torus and move the loop. After one lap, the transported vector (cyan
+   → magenta) has turned by exactly the curvature enclosed between this loop and the
+   reference loop (mod 360°).
 
 ## Project structure
 
@@ -91,6 +101,7 @@ src/
     mesh.js             Surface → typed-array mesh buffers; total curvature      [pure]
     implicit.js         Marching tetrahedra, curvature of level sets F = 0       [pure]
     topology.js         χ = V − E + F on a mesh, with seam/pole welding          [pure]
+    geodesics.js        Geodesics, parallel transport, holonomy (RK4)            [pure]
     colormap.js         Diverging colour map with robust limits                  [pure]
   render/
     viewer.js           Thin three.js wrapper (in-place buffer updates, resize, framing)
@@ -134,6 +145,10 @@ Surfaces that are easier to describe as the boundary of a solid can use
 `kind: "implicit"` instead. Provide `field(x, y, z, p)` (negative inside),
 `bounds(p)` and `featureSize(p)`; see the genus-g entry for an example.
 
+If the domain is glued (u wraps around, or wraps with a flip like a Möbius strip), add
+`seams: { u: "periodic" | "flip", v: "periodic" }` so geodesics continue across the
+edge and parallel transport is offered.
+
 You do not need to write any curvature formulas, because they are computed
 numerically. The UI controls are generated from `params`, and the tests check every
 registry entry automatically: parameter ranges, finite values over the domain, and
@@ -150,7 +165,11 @@ The unit tests check the numerical curvature against closed-form results: the sp
 check Gauss–Bonnet (∫K dA / 2π = χ within 0.01) for the sphere, torus and Klein bottle
 at several parameter values. Every surface's mesh is counted (V − E + F) and compared
 with its topology metadata at default and extreme parameters; genus-g surfaces are
-checked for g = 0…4, including convergence of ∫K dA under grid refinement. They also check mesh buffer integrity, colour mapping,
+checked for g = 0…4, including convergence of ∫K dA under grid refinement. Geodesics
+are checked against great circles (sphere), straight lines (flat graph) and the torus's
+outer equator. The fan is checked for refocusing at the antipode, and seam crossing on
+the Möbius strip. Holonomy is checked against 2π(1 − cos v₀) on the sphere and against
+the enclosed curvature on sphere and torus. They also check mesh buffer integrity, colour mapping,
 and URL round-tripping, including malformed links. CI runs the same tests on every
 push (`.github/workflows/test.yml`).
 
@@ -166,6 +185,9 @@ push (`.github/workflows/test.yml`).
   allows for it. The V − E + F count itself is exact.
 - Mean curvature depends on the sign of the normal. On non-orientable surfaces, a jump
   in the H colouring is real, not a bug.
+- Geodesics stop at real boundaries and at coordinate singularities (the sphere's
+  poles); the readout says how many stopped early. Parallel transport is offered on
+  surfaces whose u-direction is periodic (sphere, torus).
 - three.js comes from `cdn.jsdelivr.net`, so the page needs network access the first
   time it loads.
 
@@ -176,7 +198,7 @@ push (`.github/workflows/test.yml`).
 - [x] Bonnet problem: the catenoid ↔ helicoid family, where the metric and mean
       curvature stay fixed but the shape changes (see the note below)
 - [x] Genus-g surfaces and connected sums: χ counted on the mesh drops by 2 per handle
-- [ ] Geodesics and parallel transport (holonomy ↔ enclosed curvature)
+- [x] Geodesics and parallel transport (holonomy ↔ enclosed curvature)
 - [ ] Optional offline mode with vendored three.js
 
 ### A note on Bonnet pairs

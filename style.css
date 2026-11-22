@@ -314,3 +314,11 @@ input:focus-visible {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+#toolControls select {
+  margin-bottom: 10px;
+}
+
+#toolReadout[data-matches="true"] {
+  color: var(--ok);
+}
