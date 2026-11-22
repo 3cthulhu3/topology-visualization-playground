@@ -24,10 +24,11 @@ surface.
 
 | | |
 |---|---|
-| **Surfaces** | Wave graph (the original demo), saddle, sphere, torus, Möbius strip, Klein bottle (figure-8 immersion) |
+| **Surfaces** | Wave graph (the original demo), saddle, sphere, torus, Möbius strip, Klein bottle (figure-8 immersion), catenoid ↔ helicoid Bonnet family |
 | **Curvature colouring** | Gaussian curvature *K* or mean curvature *H* on a diverging blue–white–red scale, with a legend |
 | **Topology panel** | Euler characteristic χ, orientability, genus (or crosscap number), boundary components |
 | **Gauss–Bonnet check** | Live ∫K dA / 2π, compared against χ for closed surfaces |
+| **Local invariants** | Metric (E, F, G), K, H and second fundamental form (L, M, N) at a probe point, grouped into intrinsic and extrinsic |
 | **Shareable links** | Surface, parameters, colour mode and wireframe live in the URL hash |
 | **Robustness** | Clear messages for missing WebGL, blocked CDN or opening from `file://`; invalid links fall back to defaults |
 | **Accessibility** | Labelled controls, live values in `<output>`, focus styles, auto-rotate off under `prefers-reduced-motion` |
@@ -67,6 +68,10 @@ Safari or Edge). You need Node ≥ 20 only for `npm start` and the tests.
    Gauss–Bonnet still gives **0 = χ**.
 
 Example link: `http://localhost:8000/#surface=torus&R=2.4&r=0.2&color=gaussian`
+6. **Same metric, same H, different shape.** Choose *Catenoid ↔ helicoid* and drag *t*.
+   In the local-invariants panel, E, F, G, K and H do not move, but L, M and N rotate
+   from (−1, 0, 1) to (0, 1, 0). That means the metric and the mean curvature alone do
+   not determine the surface.
 
 ## Project structure
 
@@ -153,11 +158,25 @@ push (`.github/workflows/test.yml`).
 
 - [x] Curvature comparison (K / H colouring, ranges)
 - [x] Topological invariants and a live Gauss–Bonnet check
-- [ ] Bonnet-pair demonstration: two isometric surfaces with the same mean curvature
-      that are not congruent
+- [x] Bonnet problem: the catenoid ↔ helicoid family, where the metric and mean
+      curvature stay fixed but the shape changes (see the note below)
 - [ ] Genus-g surfaces and connected sums, to show how χ changes when you add a handle
 - [ ] Geodesics and parallel transport (holonomy ↔ enclosed curvature)
 - [ ] Optional offline mode with vendored three.js
+
+### A note on Bonnet pairs
+
+For a generic surface, the metric and the mean curvature function determine it up to
+rigid motion. Bonnet showed there are three exceptions: surfaces of constant mean
+curvature, Bonnet families, and Bonnet pairs. The catenoid ↔ helicoid demo is the
+simplest member of the first class (H ≡ 0).
+
+Whether a *compact* Bonnet pair exists stayed open for a long time. The first examples,
+a pair of real-analytic immersed tori, were constructed by Bobenko, Hoffmann and
+Sageman-Furnas in *Compact Bonnet pairs: isometric tori with the same curvatures*,
+Publ. Math. IHÉS 142 (2025) 241–293
+([arXiv:2110.06335](https://arxiv.org/abs/2110.06335)). Visualising those tori is a
+possible future addition.
 
 ## License
 

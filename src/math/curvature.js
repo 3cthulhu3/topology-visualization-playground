@@ -42,8 +42,11 @@ export function stepSizes(uRange, vRange) {
  * @param {number} hu
  * @param {number} hv
  * @returns {{
- *   point: Vec3, normal: Vec3 | null, K: number, H: number, areaElement: number, degenerate: boolean
+ *   point: Vec3, normal: Vec3 | null, K: number, H: number, areaElement: number, degenerate: boolean,
+ *   E: number, F: number, G: number, L: number, M: number, N: number
  * }}
+ *   E, F, G: first fundamental form (the metric — intrinsic).
+ *   L, M, N: second fundamental form (how the surface bends in space — extrinsic).
  *   K: Gaussian curvature, H: mean curvature (sign depends on the normal orientation),
  *   areaElement: |X_u × X_v|. When the parametrisation is degenerate, K and H are NaN.
  */
@@ -72,7 +75,10 @@ export function differentialAt(f, u, v, hu, hv) {
   const nLen = length(n);
 
   if (!(det > DEGENERATE_EPS) || !(nLen > 0) || !Number.isFinite(det)) {
-    return { point: p, normal: null, K: NaN, H: NaN, areaElement: 0, degenerate: true };
+    return {
+      point: p, normal: null, K: NaN, H: NaN, areaElement: 0, degenerate: true,
+      E, F, G, L: NaN, M: NaN, N: NaN
+    };
   }
 
   const N = scale(n, 1 / nLen);
@@ -86,7 +92,13 @@ export function differentialAt(f, u, v, hu, hv) {
     K: (L * Nn - M * M) / det,
     H: (E * Nn - 2 * F * M + G * L) / (2 * det),
     areaElement: nLen,
-    degenerate: false
+    degenerate: false,
+    E,
+    F,
+    G,
+    L,
+    M,
+    N: Nn
   };
 }
 
@@ -111,6 +123,17 @@ export function differentialAtRobust(f, u, v, hu, hv, uRange, vRange) {
     if (!alt.degenerate) return { ...alt, point: d.point };
   }
   return d;
+}
+
+/**
+ * All local invariants of a surface at one parameter point (for the probe panel).
+ * @param {import('./surfaces.js').Surface} surface
+ * @param {Record<string, number>} params
+ * @param {[number, number]} uv
+ */
+export function localInvariants(surface, params, [u, v]) {
+  const { hu, hv } = stepSizes(surface.uRange, surface.vRange);
+  return differentialAt((a, b) => surface.evaluate(a, b, params), u, v, hu, hv);
 }
 
 /**

@@ -6,13 +6,13 @@
  *                                  → integrateCurvature → Gauss–Bonnet panel
  */
 
-import { SURFACES, getSurface } from "./math/surfaces.js";
+import { SURFACES, getSurface, probePoint, topologyOf } from "./math/surfaces.js";
 import { buildMesh } from "./math/mesh.js";
-import { integrateCurvature } from "./math/curvature.js";
+import { integrateCurvature, localInvariants } from "./math/curvature.js";
 import { colorize, robustLimit } from "./math/colormap.js";
 import { defaultState, hashToState, normalizeState, stateToHash } from "./state.js";
 import { createViewer } from "./render/viewer.js";
-import { formatNumber, gaussBonnetSummary, stepDecimals, topologyFacts } from "./ui/format.js";
+import { formatNumber, gaussBonnetSummary, invariantRows, stepDecimals, topologyFacts } from "./ui/format.js";
 
 /** Resolution of the Gauss–Bonnet integral (cells per direction). */
 const INTEGRATION_CELLS = 120;
@@ -47,6 +47,9 @@ export function init(doc = document) {
     factGenus: $("factGenus"),
     factBoundary: $("factBoundary"),
     topologyNote: $("topologyNote"),
+    probePanel: $("probePanel"),
+    probeWhere: $("probeWhere"),
+    probeRows: $("probeRows"),
     gbValue: $("gbValue"),
     gbNote: $("gbNote"),
     kRange: $("kRange")
@@ -120,13 +123,41 @@ export function init(doc = document) {
       input.nextElementSibling.textContent = state.params[spec.id].toFixed(stepDecimals(spec.step));
     }
 
-    const facts = topologyFacts(surface.topology);
+  }
+
+  /** Topology can depend on parameters (e.g. the Bonnet family), so refresh it per geometry update. */
+  function renderTopology() {
+    const surface = getSurface(state.surfaceId);
+    const topology = topologyOf(surface, state.params);
+    const facts = topologyFacts(topology);
     els.factChi.textContent = facts.chi;
     els.factOrientable.textContent = facts.orientable;
     els.factGenusLabel.textContent = facts.genusLabel;
     els.factGenus.textContent = facts.genus;
     els.factBoundary.textContent = facts.boundary;
-    els.topologyNote.textContent = surface.topology.note;
+    els.topologyNote.textContent = topology.note;
+  }
+
+  function renderProbe() {
+    const surface = getSurface(state.surfaceId);
+    const uv = probePoint(surface);
+    const d = localInvariants(surface, state.params, uv);
+    els.probeWhere.textContent = `(u, v) = (${formatNumber(uv[0], 2)}, ${formatNumber(uv[1], 2)})`;
+    els.probeRows.innerHTML = "";
+    for (const row of invariantRows(d)) {
+      const tr = doc.createElement("tr");
+      if (row.groupStart) tr.className = "group-start";
+      const kind = doc.createElement("td");
+      kind.className = "kind";
+      kind.textContent = row.groupStart ? row.group : "";
+      const label = doc.createElement("td");
+      label.textContent = row.label;
+      const value = doc.createElement("td");
+      value.className = "mono";
+      value.textContent = row.value;
+      tr.append(kind, label, value);
+      els.probeRows.append(tr);
+    }
   }
 
   // ---------- Rendering pipeline (coalesced to one update per frame) ----------
@@ -151,6 +182,8 @@ export function init(doc = document) {
       mesh = buildMesh(surface, state.params);
       viewer.setMesh(mesh);
       els.kRange.textContent = `K ∈ [${formatNumber(mesh.stats.minK)}, ${formatNumber(mesh.stats.maxK)}]`;
+      renderTopology();
+      renderProbe();
       scheduleIntegration();
       pending.colors = true;
     }
@@ -183,7 +216,7 @@ export function init(doc = document) {
     integrationTimer = setTimeout(() => {
       const surface = getSurface(state.surfaceId);
       const { totalK } = integrateCurvature(surface, state.params, INTEGRATION_CELLS);
-      const summary = gaussBonnetSummary(surface.topology, totalK);
+      const summary = gaussBonnetSummary(topologyOf(surface, state.params), totalK);
       els.gbValue.textContent = summary.value;
       els.gbValue.dataset.matches = String(summary.matches);
       els.gbNote.textContent = summary.note;

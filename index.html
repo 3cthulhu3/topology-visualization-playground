@@ -66,6 +66,15 @@
       </div>
       <p id="status" class="status" role="status" aria-live="polite"></p>
 
+      <section class="panel" id="probePanel" aria-labelledby="probeHeading">
+        <h2 id="probeHeading">Local invariants at a probe point</h2>
+        <p class="hint">Sampled at <span id="probeWhere" class="mono">–</span>. Intrinsic quantities depend only on distances measured inside the surface; extrinsic ones depend on how it sits in space.</p>
+        <table class="invariants">
+          <thead><tr><th scope="col"></th><th scope="col">Quantity</th><th scope="col">Value</th></tr></thead>
+          <tbody id="probeRows"></tbody>
+        </table>
+      </section>
+
       <section class="panel" aria-labelledby="topologyHeading">
         <h2 id="topologyHeading">Topology</h2>
         <dl class="facts">

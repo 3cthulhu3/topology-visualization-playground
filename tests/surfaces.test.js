@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SURFACES, DEFAULT_SURFACE_ID, getSurface, defaultParams } from "../src/math/surfaces.js";
+import { SURFACES, DEFAULT_SURFACE_ID, getSurface, defaultParams, topologyOf, probePoint } from "../src/math/surfaces.js";
 
 const RESERVED_URL_KEYS = ["surface", "color", "wireframe"];
 
@@ -42,8 +42,23 @@ for (const s of SURFACES) {
     }
   });
 
-  test(`${s.id}: topology metadata is consistent`, () => {
-    const t = s.topology;
+  test(`${s.id}: topology metadata is consistent (defaults and extremes)`, () => {
+    const variants = [
+      defaultParams(s),
+      Object.fromEntries(s.params.map((p) => [p.id, p.min])),
+      Object.fromEntries(s.params.map((p) => [p.id, p.max]))
+    ];
+    for (const params of variants) checkTopology(topologyOf(s, params));
+  });
+
+  test(`${s.id}: probe point lies inside the domain`, () => {
+    const [u, v] = probePoint(s);
+    assert.ok(u >= s.uRange[0] && u <= s.uRange[1] && v >= s.vRange[0] && v <= s.vRange[1]);
+  });
+}
+
+function checkTopology(t) {
+  {
     assert.equal(typeof t.note, "string");
     if (t.closed) assert.equal(t.boundaryComponents, 0);
     if (t.eulerChar !== null && t.genus !== null) {
@@ -51,7 +66,7 @@ for (const s of SURFACES) {
       const expected = t.orientable ? 2 - 2 * t.genus - t.boundaryComponents : 2 - t.genus - t.boundaryComponents;
       assert.equal(t.eulerChar, expected);
     }
-  });
+  }
 }
 
 test("closed surfaces close up: X(u0, v) = X(u1, v) along the u seam", () => {

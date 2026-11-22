@@ -43,7 +43,7 @@ export function gaussBonnetSummary(topology, totalK) {
     value,
     matches: null,
     note:
-      "This surface has a boundary, so Gauss–Bonnet adds a boundary term ∮k_g ds. On its own this number is geometric, not topological — it changes as you reshape the surface."
+      "This surface has a boundary, so Gauss–Bonnet adds a boundary term ∮k_g ds. On its own this number is geometric, not topological: stretching changes it (try the wave graph), bending without stretching does not (try the Bonnet family)."
   };
 }
 
@@ -56,4 +56,30 @@ export function topologyFacts(topology) {
     genus: topology.genus === null ? "–" : String(topology.genus),
     boundary: String(topology.boundaryComponents)
   };
+}
+
+/**
+ * Rows for the local-invariants table. Grouped so the reader can see at a glance
+ * which numbers are intrinsic (survive bending) and which are extrinsic.
+ *
+ * @param {{E:number,F:number,G:number,L:number,M:number,N:number,K:number,H:number}} d
+ * @returns {{ group: string, label: string, value: string, groupStart: boolean }[]}
+ */
+export function invariantRows(d) {
+  const rows = [
+    ["intrinsic", "E  (metric)", d.E],
+    ["intrinsic", "F  (metric)", d.F],
+    ["intrinsic", "G  (metric)", d.G],
+    ["intrinsic", "K  (Gaussian curvature)", d.K],
+    ["extrinsic", "H  (mean curvature)", d.H],
+    ["extrinsic", "L  (2nd fundamental form)", d.L],
+    ["extrinsic", "M  (2nd fundamental form)", d.M],
+    ["extrinsic", "N  (2nd fundamental form)", d.N]
+  ];
+  return rows.map(([group, label, value], i) => ({
+    group,
+    label,
+    value: formatNumber(value, 4),
+    groupStart: i === 0 || rows[i - 1][0] !== group
+  }));
 }

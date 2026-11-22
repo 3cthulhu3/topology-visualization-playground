@@ -32,7 +32,10 @@
  * @property {[number, number]} uRange
  * @property {[number, number]} vRange
  * @property {(u: number, v: number, p: Record<string, number>) => [number, number, number]} evaluate
- * @property {Topology} topology
+ * @property {Topology | ((p: Record<string, number>) => Topology)} topology
+ *   Static, or a function of the parameters when a slider can change the topology.
+ * @property {[number, number]} [probe]  (u, v) where the "local invariants" panel samples
+ *   the surface. Defaults to the centre of the domain.
  */
 
 const TAU = Math.PI * 2;
@@ -175,6 +178,49 @@ export const SURFACES = [
       boundaryComponents: 0,
       note: "Non-orientable genus 2 (two crosscaps), χ = 0. Gauss–Bonnet still holds: ∫K dA = 0."
     }
+  },
+  {
+    id: "bonnet",
+    name: "Catenoid ↔ helicoid (Bonnet family)",
+    description:
+      "X_t = cos θ·catenoid + sin θ·helicoid, θ = t·90°. Every member has the same metric and the same mean curvature H = 0, yet the shapes are not congruent. Watch the local-invariants panel: E, F, G and H stay fixed while L, M, N change.",
+    kind: "parametric",
+    params: [{ id: "t", label: "Bend t (0 = catenoid, 1 = helicoid)", min: 0, max: 1, step: 0.01, default: 0.35 }],
+    uRange: [0, TAU],
+    vRange: [-1.2, 1.2],
+    probe: [Math.PI / 3, 0.6],
+    evaluate: (u, v, p) => {
+      const theta = (p.t * Math.PI) / 2;
+      const c = Math.cos(theta);
+      const s = Math.sin(theta);
+      const ch = Math.cosh(v);
+      const sh = Math.sinh(v);
+      // Catenoid (ch cos u, ch sin u, v) and its conjugate helicoid (sh sin u, −sh cos u, u),
+      // re-centred vertically (a translation does not affect the metric).
+      return [
+        c * ch * Math.cos(u) + s * sh * Math.sin(u),
+        c * ch * Math.sin(u) - s * sh * Math.cos(u),
+        c * v + s * (u - Math.PI)
+      ];
+    },
+    topology: (p) =>
+      p.t === 0
+        ? {
+            closed: false,
+            orientable: true,
+            eulerChar: 0,
+            genus: 0,
+            boundaryComponents: 2,
+            note: "At t = 0 the strip closes up into a catenoid: an annulus (χ = 0, two boundary circles)."
+          }
+        : {
+            closed: false,
+            orientable: true,
+            eulerChar: 1,
+            genus: 0,
+            boundaryComponents: 1,
+            note: "For t > 0 the seam opens and the strip becomes a piece of a helicoid: a disc (χ = 1). The bending is a local isometry, so the global gluing is lost."
+          }
   }
 ];
 
@@ -189,6 +235,26 @@ const BY_ID = new Map(SURFACES.map((s) => [s.id, s]));
  */
 export function getSurface(id) {
   return BY_ID.get(id);
+}
+
+/**
+ * Topology for the given parameters (handles both static and parameter-dependent entries).
+ * @param {Surface} surface
+ * @param {Record<string, number>} params
+ * @returns {Topology}
+ */
+export function topologyOf(surface, params) {
+  return typeof surface.topology === "function" ? surface.topology(params) : surface.topology;
+}
+
+/**
+ * (u, v) sampled by the local-invariants panel.
+ * @param {Surface} surface
+ * @returns {[number, number]}
+ */
+export function probePoint(surface) {
+  if (surface.probe) return surface.probe;
+  return [(surface.uRange[0] + surface.uRange[1]) / 2, (surface.vRange[0] + surface.vRange[1]) / 2];
 }
 
 /**
