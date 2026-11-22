@@ -44,7 +44,7 @@ through an import map.
 git clone https://github.com/3cthulhu3/topology-visualization-playground
 cd topology-visualization-playground
 npm start            # zero-dependency static server → http://localhost:8000
-# or: python3 -m http.server 8000
+# or: python3 -m http.server 8000   (always uses the CDN)
 ```
 
 > Opening `index.html` directly (`file://…`) does **not** work: browsers refuse to
@@ -52,6 +52,20 @@ npm start            # zero-dependency static server → http://localhost:8000
 
 Requirements: a browser with WebGL and import-map support (current Chrome, Firefox,
 Safari or Edge). You need Node ≥ 20 only for `npm start` and the tests.
+
+### Working offline
+
+three.js is loaded from a CDN by default. To use the playground without internet
+access, download the pinned version once while you are online:
+
+```bash
+npm run vendor       # saves three.js into vendor/ (not committed)
+npm start            # now serves three.js from vendor/ — no network needed
+```
+
+`npm start` tells you which mode it is in. The version and the list of add-ons are read
+from the import map in `index.html` and from the app's own imports, so there is nothing
+to keep in sync by hand. GitHub Pages and other static hosts keep using the CDN.
 
 ## Things to try
 
@@ -107,7 +121,10 @@ src/
     viewer.js           Thin three.js wrapper (in-place buffer updates, resize, framing)
   ui/
     format.js           Text for panels                                          [pure]
-scripts/serve.js        Local static server
+scripts/
+  serve.js              `npm start`: local static server (uses vendor/ when present)
+  vendor-three.js       `npm run vendor`: downloads three.js for offline use
+  lib/                  Server, import-map and download helpers (tested)
 tests/                  node:test unit tests for every [pure] module
 ```
 
@@ -169,7 +186,9 @@ checked for g = 0…4, including convergence of ∫K dA under grid refinement. G
 are checked against great circles (sphere), straight lines (flat graph) and the torus's
 outer equator. The fan is checked for refocusing at the antipode, and seam crossing on
 the Möbius strip. Holonomy is checked against 2π(1 − cos v₀) on the sphere and against
-the enclosed curvature on sphere and torus. They also check mesh buffer integrity, colour mapping,
+the enclosed curvature on sphere and torus. The dev server and the vendor script are
+tested too: import-map rewriting, CDN vs local mode, path-traversal protection, mirror
+fallback and rejection of HTML error pages. They also check mesh buffer integrity, colour mapping,
 and URL round-tripping, including malformed links. CI runs the same tests on every
 push (`.github/workflows/test.yml`).
 
@@ -188,8 +207,8 @@ push (`.github/workflows/test.yml`).
 - Geodesics stop at real boundaries and at coordinate singularities (the sphere's
   poles); the readout says how many stopped early. Parallel transport is offered on
   surfaces whose u-direction is periodic (sphere, torus).
-- three.js comes from `cdn.jsdelivr.net`, so the page needs network access the first
-  time it loads.
+- three.js comes from `cdn.jsdelivr.net` unless you have run `npm run vendor` (see
+  *Working offline*).
 
 ## Roadmap
 
@@ -199,7 +218,7 @@ push (`.github/workflows/test.yml`).
       curvature stay fixed but the shape changes (see the note below)
 - [x] Genus-g surfaces and connected sums: χ counted on the mesh drops by 2 per handle
 - [x] Geodesics and parallel transport (holonomy ↔ enclosed curvature)
-- [ ] Optional offline mode with vendored three.js
+- [x] Optional offline mode with vendored three.js (`npm run vendor`)
 
 ### A note on Bonnet pairs
 

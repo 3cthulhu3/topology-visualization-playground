@@ -42,7 +42,7 @@ async function start() {
     console.error(err);
     showError(
       "Could not load the 3D engine.",
-      "three.js is loaded from cdn.jsdelivr.net. Check your internet connection or content blockers, then reload."
+      "three.js is loaded from cdn.jsdelivr.net. Check your internet connection or content blockers, then reload. To work offline, run `npm run vendor` once while online, then `npm start`."
     );
     return;
   }
