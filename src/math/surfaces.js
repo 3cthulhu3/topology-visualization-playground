@@ -27,12 +27,25 @@
  * @property {string} id
  * @property {string} name
  * @property {string} description
- * @property {'graph'|'parametric'} kind
+ * @property {'graph'|'parametric'|'implicit'} kind
+ *   graph/parametric surfaces define uRange, vRange and evaluate(u, v, p).
+ *   implicit surfaces define field(x, y, z, p) (negative inside), bounds(p) and
+ *   featureSize(p) (thinnest detail, used to pick the grid spacing) instead.
  * @property {ParamSpec[]} params
- * @property {[number, number]} uRange
- * @property {[number, number]} vRange
- * @property {(u: number, v: number, p: Record<string, number>) => [number, number, number]} evaluate
- * @property {Topology} topology
+ * @property {[number, number]} [uRange]
+ * @property {[number, number]} [vRange]
+ * @property {(u: number, v: number, p: Record<string, number>) => [number, number, number]} [evaluate]
+ * @property {(x: number, y: number, z: number, p: Record<string, number>) => number} [field]
+ * @property {(p: Record<string, number>) => { min: [number, number, number], max: [number, number, number] }} [bounds]
+ * @property {(p: Record<string, number>) => number} [featureSize]
+ * @property {Topology | ((p: Record<string, number>) => Topology)} topology
+ *   Static, or a function of the parameters when a slider can change the topology.
+ * @property {{ u?: 'periodic' | 'flip', v?: 'periodic' }} [seams]
+ *   How the parameter domain is glued, used by geodesics and parallel transport to
+ *   continue across an edge: 'periodic' wraps around; 'flip' (on u) also reflects v,
+ *   as on a Möbius strip or Klein bottle. Edges without an entry are real boundaries.
+ * @property {[number, number]} [probe]  (u, v) where the "local invariants" panel samples
+ *   the surface. Defaults to the centre of the domain.
  */
 
 const TAU = Math.PI * 2;
@@ -85,6 +98,7 @@ export const SURFACES = [
     description: "Constant positive curvature K = 1/R². Changing R rescales K but ∫K dA stays 4π.",
     kind: "parametric",
     params: [{ id: "R", label: "Radius R", min: 0.5, max: 2.5, step: 0.01, default: 1.5 }],
+    seams: { u: "periodic" },
     uRange: [0, TAU],
     vRange: [0, Math.PI],
     evaluate: (u, v, p) => [
@@ -111,6 +125,7 @@ export const SURFACES = [
       { id: "R", label: "Major radius R", min: 0.8, max: 2.5, step: 0.01, default: 1.6 },
       { id: "r", label: "Minor radius r", min: 0.1, max: 0.79, step: 0.01, default: 0.6 }
     ],
+    seams: { u: "periodic", v: "periodic" },
     uRange: [0, TAU],
     vRange: [0, TAU],
     evaluate: (u, v, p) => {
@@ -135,6 +150,7 @@ export const SURFACES = [
       { id: "radius", label: "Radius", min: 0.8, max: 2.5, step: 0.01, default: 1.6 },
       { id: "width", label: "Half-width", min: 0.1, max: 0.79, step: 0.01, default: 0.6 }
     ],
+    seams: { u: "flip" },
     uRange: [0, TAU],
     vRange: [-1, 1],
     evaluate: (u, v, p) => {
@@ -158,6 +174,7 @@ export const SURFACES = [
       "A closed non-orientable surface. In 3D it must pass through itself; this figure-8 version is an immersion, so self-intersections are expected.",
     kind: "parametric",
     params: [{ id: "r", label: "Tube radius r", min: 1, max: 3, step: 0.01, default: 2 }],
+    seams: { u: "flip", v: "periodic" },
     uRange: [0, TAU],
     vRange: [0, TAU],
     evaluate: (u, v, p) => {
@@ -175,8 +192,104 @@ export const SURFACES = [
       boundaryComponents: 0,
       note: "Non-orientable genus 2 (two crosscaps), χ = 0. Gauss–Bonnet still holds: ∫K dA = 0."
     }
+  },
+  {
+    id: "bonnet",
+    name: "Catenoid ↔ helicoid (Bonnet family)",
+    description:
+      "X_t = cos θ·catenoid + sin θ·helicoid, θ = t·90°. Every member has the same metric and the same mean curvature H = 0, yet the shapes are not congruent. Watch the local-invariants panel: E, F, G and H stay fixed while L, M, N change.",
+    kind: "parametric",
+    params: [{ id: "t", label: "Bend t (0 = catenoid, 1 = helicoid)", min: 0, max: 1, step: 0.01, default: 0.35 }],
+    uRange: [0, TAU],
+    vRange: [-1.2, 1.2],
+    probe: [Math.PI / 3, 0.6],
+    evaluate: (u, v, p) => {
+      const theta = (p.t * Math.PI) / 2;
+      const c = Math.cos(theta);
+      const s = Math.sin(theta);
+      const ch = Math.cosh(v);
+      const sh = Math.sinh(v);
+      // Catenoid (ch cos u, ch sin u, v) and its conjugate helicoid (sh sin u, −sh cos u, u),
+      // re-centred vertically (a translation does not affect the metric).
+      return [
+        c * ch * Math.cos(u) + s * sh * Math.sin(u),
+        c * ch * Math.sin(u) - s * sh * Math.cos(u),
+        c * v + s * (u - Math.PI)
+      ];
+    },
+    topology: (p) =>
+      p.t === 0
+        ? {
+            closed: false,
+            orientable: true,
+            eulerChar: 0,
+            genus: 0,
+            boundaryComponents: 2,
+            note: "At t = 0 the strip closes up into a catenoid: an annulus (χ = 0, two boundary circles)."
+          }
+        : {
+            closed: false,
+            orientable: true,
+            eulerChar: 1,
+            genus: 0,
+            boundaryComponents: 1,
+            note: "For t > 0 the seam opens and the strip becomes a piece of a helicoid: a disc (χ = 1). The bending is a local isometry, so the global gluing is lost."
+          }
+  },
+  {
+    id: "genus",
+    name: "Genus-g surface (add handles)",
+    description:
+      "A closed surface built as a smooth union of g overlapping tori — the connected sum of g tori. Each handle you add lowers χ by 2. Total curvature follows: ∫K dA = 2π(2 − 2g).",
+    kind: "implicit",
+    params: [
+      { id: "handles", label: "Handles g", min: 0, max: 4, step: 1, default: 2 },
+      { id: "r", label: "Tube radius r", min: 0.2, max: 0.45, step: 0.01, default: 0.32 }
+    ],
+    field: genusField,
+    bounds: (p) => {
+      const g = p.handles;
+      const half = g === 0 ? SPHERE_RADIUS + 0.3 : ((g - 1) * TORUS_SPACING) / 2 + 1 + p.r + 0.3;
+      const side = g === 0 ? SPHERE_RADIUS + 0.3 : 1 + p.r + 0.3;
+      const up = g === 0 ? SPHERE_RADIUS + 0.3 : p.r + 0.3;
+      return { min: [-half, -side, -up], max: [half, side, up] };
+    },
+    featureSize: (p) => (p.handles === 0 ? SPHERE_RADIUS : 2 * p.r),
+    topology: (p) => ({
+      closed: true,
+      orientable: true,
+      eulerChar: 2 - 2 * p.handles,
+      genus: p.handles,
+      boundaryComponents: 0,
+      note:
+        p.handles === 0
+          ? "No handles: a sphere, χ = 2. Add one and you get a torus (χ = 0)."
+          : `Connected sum of ${p.handles} ${p.handles === 1 ? "torus" : "tori"}: χ(A # B) = χ(A) + χ(B) − 2, so each handle subtracts 2 → χ = ${2 - 2 * p.handles}.`
+    })
   }
 ];
+
+const SPHERE_RADIUS = 1.15;
+const TORUS_SPACING = 1.8;
+const BLEND = 0.12;
+
+/**
+ * Smooth union (log-sum-exp) of g tori in a row, each with major radius 1 and tube
+ * radius r. Neighbours overlap enough to merge but leave every hole open, so the
+ * result is a single closed surface of genus g. g = 0 gives a sphere.
+ */
+function genusField(x, y, z, p) {
+  const g = p.handles;
+  if (g === 0) return Math.hypot(x, y, z) - SPHERE_RADIUS;
+  let sum = 0;
+  for (let i = 0; i < g; i++) {
+    const cx = (i - (g - 1) / 2) * TORUS_SPACING;
+    const q = Math.hypot(x - cx, y) - 1;
+    const d = Math.hypot(q, z) - p.r;
+    sum += Math.exp(-d / BLEND);
+  }
+  return -BLEND * Math.log(sum);
+}
 
 /** Default surface id — matches the original single-surface demo. */
 export const DEFAULT_SURFACE_ID = "wave";
@@ -189,6 +302,26 @@ const BY_ID = new Map(SURFACES.map((s) => [s.id, s]));
  */
 export function getSurface(id) {
   return BY_ID.get(id);
+}
+
+/**
+ * Topology for the given parameters (handles both static and parameter-dependent entries).
+ * @param {Surface} surface
+ * @param {Record<string, number>} params
+ * @returns {Topology}
+ */
+export function topologyOf(surface, params) {
+  return typeof surface.topology === "function" ? surface.topology(params) : surface.topology;
+}
+
+/**
+ * (u, v) sampled by the local-invariants panel.
+ * @param {Surface} surface
+ * @returns {[number, number]}
+ */
+export function probePoint(surface) {
+  if (surface.probe) return surface.probe;
+  return [(surface.uRange[0] + surface.uRange[1]) / 2, (surface.vRange[0] + surface.vRange[1]) / 2];
 }
 
 /**

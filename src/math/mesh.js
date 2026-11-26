@@ -3,7 +3,8 @@
  * No THREE.js here: the output is plain typed arrays, so it is fully testable in Node.
  */
 
-import { differentialAtRobust, stepSizes } from "./curvature.js";
+import { differentialAtRobust, integrateCurvature, stepSizes } from "./curvature.js";
+import { buildImplicitMesh, meshCurvatureIntegral } from "./implicit.js";
 
 export const DEFAULT_RESOLUTION = 128;
 
@@ -25,6 +26,7 @@ export const DEFAULT_RESOLUTION = 128;
  * @returns {MeshData}
  */
 export function buildMesh(surface, params, options = {}) {
+  if (surface.kind === "implicit") return buildImplicitMesh(surface, params, options);
   const res = Math.max(2, Math.floor(options.resolution ?? DEFAULT_RESOLUTION));
   const nu = res;
   const nv = res;
@@ -100,4 +102,19 @@ export function buildMesh(surface, params, options = {}) {
     vertexCount,
     stats: { minK, maxK, minH, maxH }
   };
+}
+
+/**
+ * ∫K dA for the Gauss–Bonnet panel. Parametric surfaces are integrated on their own
+ * (u, v) grid; implicit surfaces have no parameters, so the mesh is used instead.
+ *
+ * @param {import('./surfaces.js').Surface} surface
+ * @param {Record<string, number>} params
+ * @param {MeshData} mesh  the mesh currently displayed for this surface
+ * @param {number} [cells]
+ * @returns {{ totalK: number, area: number }}
+ */
+export function totalCurvature(surface, params, mesh, cells = 120) {
+  if (surface.kind === "implicit") return meshCurvatureIntegral(mesh);
+  return integrateCurvature(surface, params, cells);
 }

@@ -218,10 +218,12 @@ input:focus-visible {
   margin: 0;
 }
 
+#factMeshChi[data-matches="true"],
 #gbValue[data-matches="true"] {
   color: var(--ok);
 }
 
+#factMeshChi[data-matches="false"],
 #gbValue[data-matches="false"] {
   color: var(--warn);
 }
@@ -279,4 +281,44 @@ input:focus-visible {
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.invariants {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+.invariants th,
+.invariants td {
+  padding: 3px 4px;
+  text-align: left;
+}
+
+.invariants th {
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.invariants td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.invariants tr.group-start td {
+  border-top: 1px solid var(--border);
+}
+
+.invariants .kind {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#toolControls select {
+  margin-bottom: 10px;
+}
+
+#toolReadout[data-matches="true"] {
+  color: var(--ok);
 }

@@ -64,6 +64,11 @@ export function createViewer(container, options = {}) {
   mesh.rotation.x = -Math.PI / 2;
   scene.add(mesh);
 
+  // Line overlays (geodesics, transported vectors) live inside the mesh so they share its
+  // z-up → y-up rotation.
+  const overlayGroup = new THREE.Group();
+  mesh.add(overlayGroup);
+
   let colorsEnabled = false;
   const boundingSphere = new THREE.Sphere(new THREE.Vector3(), 3);
 
@@ -121,6 +126,24 @@ export function createViewer(container, options = {}) {
     }
   }
 
+  /**
+   * Replaces all overlay lines.
+   * @param {{ segments: Float32Array, color: number }[]} overlays  segment endpoint pairs, z-up frame
+   */
+  function setOverlays(overlays) {
+    for (const child of [...overlayGroup.children]) {
+      overlayGroup.remove(child);
+      child.geometry.dispose();
+      child.material.dispose();
+    }
+    for (const { segments, color } of overlays) {
+      if (!segments || segments.length === 0) continue;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.BufferAttribute(segments, 3));
+      overlayGroup.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color })));
+    }
+  }
+
   function setWireframe(on) {
     material.wireframe = Boolean(on);
   }
@@ -155,11 +178,12 @@ export function createViewer(container, options = {}) {
     cancelAnimationFrame(frameId);
     resizeObserver.disconnect();
     controls.dispose();
+    setOverlays([]);
     geometry.dispose();
     material.dispose();
     renderer.dispose();
     renderer.domElement.remove();
   }
 
-  return { setMesh, setColors, setWireframe, setAutoRotate, frame, dispose };
+  return { setMesh, setColors, setOverlays, setWireframe, setAutoRotate, frame, dispose };
 }

@@ -54,6 +54,17 @@
         </div>
       </div>
 
+      <fieldset class="control-group" id="toolControls">
+        <legend>Geodesics &amp; parallel transport</legend>
+        <select id="tool" aria-label="Overlay tool">
+          <option value="none">Off</option>
+          <option value="fan">Geodesic fan</option>
+          <option value="transport">Parallel transport around a loop</option>
+        </select>
+        <div id="toolParams"></div>
+        <p id="toolReadout" class="hint" aria-live="polite"></p>
+      </fieldset>
+
       <div class="control-group toggles">
         <label><input type="checkbox" id="wireframe" /> Wireframe</label>
         <label><input type="checkbox" id="autorotate" /> Auto rotate</label>
@@ -66,6 +77,15 @@
       </div>
       <p id="status" class="status" role="status" aria-live="polite"></p>
 
+      <section class="panel" id="probePanel" aria-labelledby="probeHeading">
+        <h2 id="probeHeading">Local invariants at a probe point</h2>
+        <p class="hint">Sampled at <span id="probeWhere" class="mono">–</span>. Intrinsic quantities depend only on distances measured inside the surface; extrinsic ones depend on how it sits in space.</p>
+        <table class="invariants">
+          <thead><tr><th scope="col"></th><th scope="col">Quantity</th><th scope="col">Value</th></tr></thead>
+          <tbody id="probeRows"></tbody>
+        </table>
+      </section>
+
       <section class="panel" aria-labelledby="topologyHeading">
         <h2 id="topologyHeading">Topology</h2>
         <dl class="facts">
@@ -73,7 +93,9 @@
           <dt>Orientable</dt><dd id="factOrientable">–</dd>
           <dt id="factGenusLabel">Genus</dt><dd id="factGenus">–</dd>
           <dt>Boundary components</dt><dd id="factBoundary">–</dd>
+          <dt>Counted on the mesh</dt><dd id="factMeshChi" class="mono">–</dd>
         </dl>
+        <p id="meshCounts" class="hint mono"></p>
         <p id="topologyNote" class="hint"></p>
       </section>
 

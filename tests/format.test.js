@@ -30,3 +30,22 @@ test("topology facts label non-orientable genus correctly", () => {
   assert.equal(topologyFacts(getSurface("torus").topology).genusLabel, "Genus");
   assert.match(topologyFacts(getSurface("klein").topology).genusLabel, /crosscap/);
 });
+
+import { fanReadout, transportReadout } from "../src/ui/format.js";
+
+test("fanReadout explains focusing by the sign of K and reports early stops", () => {
+  assert.match(fanReadout({ K: 0.4, count: 7, stopped: { boundary: 0, singular: 0 } }), /refocus/);
+  assert.match(fanReadout({ K: -2, count: 7, stopped: { boundary: 0, singular: 0 } }), /spread apart/);
+  assert.match(fanReadout({ K: 0, count: 7, stopped: { boundary: 0, singular: 0 } }), /parallel/);
+  const r = fanReadout({ K: 1, count: 7, stopped: { boundary: 2, singular: 1 } });
+  assert.match(r, /2 of 7 reached the edge/);
+  assert.match(r, /1 of 7 stopped at a coordinate singularity/);
+});
+
+test("transportReadout states availability and the Gauss–Bonnet match", () => {
+  assert.equal(transportReadout({ available: false }).matches, null);
+  const ok = transportReadout({ available: true, holonomy: 1, reference: 0, difference: 1, enclosed: 1 + 2 * Math.PI, error: 1e-5 });
+  assert.equal(ok.matches, true);
+  assert.match(ok.text, /57\.3°/);
+  assert.equal(transportReadout({ available: true, holonomy: 1, reference: 0, difference: 1, enclosed: 2, error: 1 }).matches, false);
+});
